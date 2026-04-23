@@ -484,6 +484,10 @@ const PATTERN_DATA = {
     "tttt":{tai:85,xiu:15},"xxxx":{tai:15,xiu:85},"ttttt":{tai:88,xiu:12},
     "xxxxx":{tai:12,xiu:88},"tttttt":{tai:92,xiu:8},"xxxxxx":{tai:8,xiu:92}
 };
+function analyzePatterns(lastResults) {
+    if (!lastResults || lastResults.length === 0) return [null, "Khong co du lieu"];
+    return [null, `: ${lastResults.map(r => r === "Tai" ? "T" : "X").slice(0, 10).join('')}`];
+}
 function predictLogic24(history) {
     if (!history || history.length < 5) return null;
     const votes = [];
@@ -493,6 +497,8 @@ function predictLogic24(history) {
         if (p.tai > p.xiu + 15) votes.push("Tai");
         else if (p.xiu > p.tai + 15) votes.push("Xiu");
     }
+    const [patternPred, patternDesc] = analyzePatterns(history.map(s => s.result));
+    if (patternPred) votes.push(patternPred);
     const tc = votes.filter(v=>v==="Tai").length;
     const xc = votes.filter(v=>v==="Xiu").length;
     if (tc + xc < 4) return null;
