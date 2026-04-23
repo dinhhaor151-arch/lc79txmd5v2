@@ -537,13 +537,29 @@ function deepAnalysis(h, gameId, lastTotal, lastPhien) {
     // ENSEMBLE VOTES
     const ev = {tai:0, xiu:0};
     try {
-        const p1 = predictLogic1({sid:lastPhien,total:lastTotal}, histObjs); if(p1==="Tai") ev.tai++; else if(p1==="Xiu") ev.xiu++;
-        const p3 = predictLogic3(histObjs); if(p3==="Tai") ev.tai++; else if(p3==="Xiu") ev.xiu++;
-        const p4 = predictLogic4(histObjs); if(p4==="Tai") ev.tai++; else if(p4==="Xiu") ev.xiu++;
-        const p7 = predictLogic7(histObjs); if(p7==="Tai") ev.tai++; else if(p7==="Xiu") ev.xiu++;
-        const p9 = predictLogic9(histObjs); if(p9==="Tai") ev.tai++; else if(p9==="Xiu") ev.xiu++;
+        const p1  = predictLogic1({sid:lastPhien,total:lastTotal}, histObjs); if(p1==="Tai") ev.tai++; else if(p1==="Xiu") ev.xiu++;
+        const p2  = predictLogic2(lastPhien+1, histObjs); if(p2==="Tai") ev.tai++; else if(p2==="Xiu") ev.xiu++;
+        const p3  = predictLogic3(histObjs); if(p3==="Tai") ev.tai++; else if(p3==="Xiu") ev.xiu++;
+        const p4  = predictLogic4(histObjs); if(p4==="Tai") ev.tai++; else if(p4==="Xiu") ev.xiu++;
+        const p5  = predictLogic5(histObjs); if(p5==="Tai") ev.tai++; else if(p5==="Xiu") ev.xiu++;
+        const p6  = predictLogic6({sid:lastPhien,total:lastTotal}, histObjs); if(p6==="Tai") ev.tai++; else if(p6==="Xiu") ev.xiu++;
+        const p7  = predictLogic7(histObjs); if(p7==="Tai") ev.tai++; else if(p7==="Xiu") ev.xiu++;
+        const p8  = predictLogic8(histObjs); if(p8==="Tai") ev.tai++; else if(p8==="Xiu") ev.xiu++;
+        const p9  = predictLogic9(histObjs); if(p9==="Tai") ev.tai++; else if(p9==="Xiu") ev.xiu++;
+        const p10 = predictLogic10(histObjs); if(p10==="Tai") ev.tai++; else if(p10==="Xiu") ev.xiu++;
         const p11 = predictLogic11(histObjs); if(p11==="Tai") ev.tai++; else if(p11==="Xiu") ev.xiu++;
+        const p12 = predictLogic12({sid:lastPhien,total:lastTotal}, histObjs); if(p12==="Tai") ev.tai++; else if(p12==="Xiu") ev.xiu++;
+        const p13 = predictLogic13(histObjs); if(p13==="Tai") ev.tai++; else if(p13==="Xiu") ev.xiu++;
+        const p14 = predictLogic14(histObjs); if(p14==="Tai") ev.tai++; else if(p14==="Xiu") ev.xiu++;
+        const p15 = predictLogic15(histObjs); if(p15==="Tai") ev.tai++; else if(p15==="Xiu") ev.xiu++;
+        const p16 = predictLogic16(histObjs); if(p16==="Tai") ev.tai++; else if(p16==="Xiu") ev.xiu++;
+        const p17 = predictLogic17(histObjs); if(p17==="Tai") ev.tai++; else if(p17==="Xiu") ev.xiu++;
+        const p18 = predictLogic18(histObjs); if(p18==="Tai") ev.tai++; else if(p18==="Xiu") ev.xiu++;
+        const p19 = predictLogic19(histObjs); if(p19==="Tai") ev.tai++; else if(p19==="Xiu") ev.xiu++;
         const p21 = predictLogic21(histObjs); if(p21==="Tai") ev.tai++; else if(p21==="Xiu") ev.xiu++;
+        const p22 = predictLogic22(histObjs); if(p22==="Tai") ev.tai++; else if(p22==="Xiu") ev.xiu++;
+        const p23 = predictLogic23(histObjs); if(p23==="Tai") ev.tai++; else if(p23==="Xiu") ev.xiu++;
+        const p24 = predictLogic24(histObjs); if(p24==="Tai") ev.tai++; else if(p24==="Xiu") ev.xiu++;
         const p25 = logic25(histObjs); if(p25==='T') ev.tai++; else if(p25==='X') ev.xiu++;
         const p26 = logic26(histObjs); if(p26==='T') ev.tai++; else if(p26==='X') ev.xiu++;
     } catch(e) {}
@@ -684,16 +700,30 @@ async function fetchAndUpdate(gameId) {
         const list = json.list || json.data || (Array.isArray(json) ? json : []);
         if (!list || list.length === 0) return;
         const latest = list[0];
-        s.lastTotal = (latest.dice1||0)+(latest.dice2||0)+(latest.dice3||0);
-        s.history = list.slice(0, 605).map(x => {
-            const sum = (x.dice1||0)+(x.dice2||0)+(x.dice3||0);
-            return (sum===0&&x.resultTruyenThong)?(x.resultTruyenThong==='TAI'?1:0):(sum>10?1:0);
-        });
+
+        // Lấy tổng từ field "point" hoặc dice1+dice2+dice3
+        s.lastTotal = latest.point || (latest.dice1||0)+(latest.dice2||0)+(latest.dice3||0);
+
+        // Tích lũy lịch sử - thêm các phiên mới vào đầu mảng
+        for (const x of list) {
+            const xid = x.id;
+            if (!s.rawHistory.find(r => r.id === xid)) {
+                const sum = x.point || (x.dice1||0)+(x.dice2||0)+(x.dice3||0);
+                const val = sum > 0 ? (sum > 10 ? 1 : 0) : (x.resultTruyenThong === 'TAI' ? 1 : 0);
+                s.rawHistory.unshift({ id: xid, val, total: sum || (val===1?14:7), d1: x.dice1||3, d2: x.dice2||3, d3: x.dice3||1 });
+            }
+        }
+        // Giữ tối đa 605, sắp xếp mới nhất trước
+        s.rawHistory.sort((a,b) => b.id - a.id);
+        if (s.rawHistory.length > 605) s.rawHistory = s.rawHistory.slice(0, 605);
+
+        s.history = s.rawHistory.map(r => r.val);
+
         if (latest.id > s.lastPhien) {
             s.lastPhien = latest.id;
             s.lastResult = deepAnalysis(s.history, gameId, s.lastTotal, s.lastPhien);
             s.updatedAt = new Date().toISOString();
-            console.log(`[${gameId}] Phien #${latest.id+1} -> ${s.lastResult.prediction} (${s.lastResult.confidence}%) | ${s.lastResult.logic}`);
+            console.log(`[${gameId}] Phien #${latest.id+1} | history: ${s.history.length} | -> ${s.lastResult.prediction} (${s.lastResult.confidence}%) | ${s.lastResult.logic}`);
         }
     } catch(e) {
         console.error(`[${gameId}] Error:`, e.message);
