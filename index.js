@@ -10,8 +10,8 @@ const GAMES = {
     lc79_md5: { api: 'https://wtxmd52.tele68.com/v1/txmd5/lite-sessions?cp=R&cl=R&pf=web&at=3959701241b686f12e01bfe9c3a319b8', name: 'TAI XIU MD5' }
 };
 const state = {
-    lc79_hu:  { history: [], rawHistory: [], lastPhien: 0, lastTotal: 0, lastResult: null, updatedAt: null },
-    lc79_md5: { history: [], rawHistory: [], lastPhien: 0, lastTotal: 0, lastResult: null, updatedAt: null }
+    lc79_hu:  { history: [], rawHistory: [], lastPhien: 0, lastTotal: 0, lastResult: null, updatedAt: null, predHistory: [] },
+    lc79_md5: { history: [], rawHistory: [], lastPhien: 0, lastTotal: 0, lastResult: null, updatedAt: null, predHistory: [] }
 };
 
 // ==================== UTILS ====================
@@ -720,9 +720,34 @@ async function fetchAndUpdate(gameId) {
         s.history = s.rawHistory.map(r => r.val);
 
         if (latest.id > s.lastPhien) {
+            // Kiểm tra dự đoán phiên trước đúng/sai
+            if (s.lastResult && s.lastResult.prediction && s.predHistory.length > 0) {
+                const lastPred = s.predHistory[s.predHistory.length - 1];
+                if (!lastPred.actual) {
+                    const actualVal = s.history[0] === 1 ? 'TAI' : 'XIU';
+                    lastPred.actual = actualVal;
+                    lastPred.correct = lastPred.prediction === actualVal;
+                }
+            }
+
             s.lastPhien = latest.id;
             s.lastResult = deepAnalysis(s.history, gameId, s.lastTotal, s.lastPhien);
             s.updatedAt = new Date().toISOString();
+
+            // Lưu dự đoán mới
+            if (s.lastResult.prediction) {
+                s.predHistory.push({
+                    phien: latest.id + 1,
+                    prediction: s.lastResult.prediction,
+                    confidence: s.lastResult.confidence,
+                    logic: s.lastResult.logic,
+                    actual: null,
+                    correct: null,
+                    time: s.updatedAt
+                });
+                if (s.predHistory.length > 200) s.predHistory = s.predHistory.slice(-200);
+            }
+
             console.log(`[${gameId}] Phien #${latest.id+1} | history: ${s.history.length} | -> ${s.lastResult.prediction} (${s.lastResult.confidence}%) | ${s.lastResult.logic}`);
         }
     } catch(e) {
@@ -736,8 +761,24 @@ fetchAndUpdate('lc79_hu');
 fetchAndUpdate('lc79_md5');
 
 // ==================== ROUTES ====================
+app.get('/history/:gameId', (req, res) => {
+    const {gameId} = req.params;
+    if (!state[gameId]) return res.status(404).json({error: 'Not found. Use: lc79_hu or lc79_md5'});
+    const s = state[gameId];
+    const history = s.predHistory.slice().reverse(); // mới nhất trước
+    const total = history.filter(p => p.actual !== null).length;
+    const correct = history.filter(p => p.correct === true).length;
+    res.json({
+        game: GAMES[gameId].name,
+        accuracy: total > 0 ? `${((correct/total)*100).toFixed(1)}%` : 'Chưa có dữ liệu',
+        correct,
+        total,
+        history: history.slice(0, 50) // 50 phiên gần nhất
+    });
+});
+
 app.get('/', (req, res) => {
-    res.json({ status: 'online', routes: ['/predict/lc79_hu', '/predict/lc79_md5', '/predict/all'] });
+    res.json({ status: 'online', routes: ['/predict/lc79_hu', '/predict/lc79_md5', '/predict/all', '/history/lc79_hu', '/history/lc79_md5'] });
 });
 app.get('/predict/all', (req, res) => {
     res.json({
